@@ -35,6 +35,10 @@ let currentUser = null;
 let allUsers = [];
 let firebaseConfigured = false;
 
+// Shopping Cart Variables
+let shoppingCart = [];
+let selectedPanelType = '';
+
 // Notification Functions
 function showFirebaseNotification(isSuccess = false) {
     const notification = document.getElementById('firebaseNotification');
@@ -540,5 +544,306 @@ window.addEventListener('click', (e) => {
     if (e.target.classList.contains('modal')) {
         e.target.classList.remove('active');
     }
+});
+
+// ========== SHOPPING CART FUNCTIONS ==========
+
+// Add item to cart
+function addToCart(name, price, description = '') {
+    const existingItem = shoppingCart.find(item => item.name === name);
+    
+    if (existingItem) {
+        existingItem.quantity++;
+    } else {
+        shoppingCart.push({
+            name: name,
+            price: price,
+            description: description,
+            quantity: 1
+        });
+    }
+    
+    updateCart();
+    showCartNotification(name);
+}
+
+// Show notification when item added
+function showCartNotification(itemName) {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 100px;
+        right: 20px;
+        background: #059669;
+        color: white;
+        padding: 1rem 2rem;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        z-index: 3000;
+        animation: slideInRight 0.3s ease;
+    `;
+    notification.innerHTML = `✅ ${itemName} ditambahkan ke keranjang!`;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
+// Update cart display
+function updateCart() {
+    const cartItems = document.getElementById('cartItems');
+    const cartSummary = document.getElementById('cartSummary');
+    const cartBadge = document.getElementById('cartBadge');
+    const cartTotalPrice = document.getElementById('cartTotalPrice');
+    
+    // Update badge
+    const totalItems = shoppingCart.reduce((sum, item) => sum + item.quantity, 0);
+    if (totalItems > 0) {
+        cartBadge.style.display = 'flex';
+        cartBadge.textContent = totalItems;
+    } else {
+        cartBadge.style.display = 'none';
+    }
+    
+    // Update cart items display
+    if (shoppingCart.length === 0) {
+        cartItems.innerHTML = `
+            <div class="cart-empty">
+                <p>🛒</p>
+                <p data-lang-id="Keranjang kosong" data-lang-en="Cart is empty">Keranjang kosong</p>
+            </div>
+        `;
+        cartSummary.style.display = 'none';
+    } else {
+        cartItems.innerHTML = shoppingCart.map((item, index) => `
+            <div class="cart-item">
+                <button class="remove-item" onclick="removeFromCart(${index})">&times;</button>
+                <h4>${item.name}</h4>
+                ${item.description ? `<p style="font-size: 0.9rem; color: var(--text-light);">${item.description}</p>` : ''}
+                <div class="cart-item-price">Rp ${item.price.toLocaleString('id-ID')}</div>
+                <div class="cart-item-quantity">
+                    <button class="qty-btn" onclick="updateQuantity(${index}, -1)">−</button>
+                    <span class="qty-display">${item.quantity}</span>
+                    <button class="qty-btn" onclick="updateQuantity(${index}, 1)">+</button>
+                </div>
+                <div style="font-size: 0.9rem; margin-top: 0.5rem;">
+                    <strong>Subtotal: Rp ${(item.price * item.quantity).toLocaleString('id-ID')}</strong>
+                </div>
+            </div>
+        `).join('');
+        cartSummary.style.display = 'block';
+    }
+    
+    // Update total price
+    const total = shoppingCart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    cartTotalPrice.textContent = `Rp ${total.toLocaleString('id-ID')}`;
+}
+
+// Update item quantity
+function updateQuantity(index, change) {
+    if (shoppingCart[index]) {
+        shoppingCart[index].quantity += change;
+        if (shoppingCart[index].quantity <= 0) {
+            shoppingCart.splice(index, 1);
+        }
+        updateCart();
+    }
+}
+
+// Remove item from cart
+function removeFromCart(index) {
+    shoppingCart.splice(index, 1);
+    updateCart();
+}
+
+// Open cart sidebar
+function openCart() {
+    document.getElementById('cartSidebar').classList.add('active');
+    document.getElementById('cartOverlay').classList.add('active');
+}
+
+// Close cart sidebar
+function closeCart() {
+    document.getElementById('cartSidebar').classList.remove('active');
+    document.getElementById('cartOverlay').classList.remove('active');
+}
+
+// Proceed to checkout
+function proceedToCheckout() {
+    if (shoppingCart.length === 0) {
+        alert(currentLang === 'id' ? 
+            'Keranjang Anda kosong! Tambahkan produk terlebih dahulu.' : 
+            'Your cart is empty! Please add products first.');
+        return;
+    }
+    
+    // Hide all sections
+    document.querySelectorAll('section:not(#checkout)').forEach(section => {
+        if (!section.classList.contains('admin-panel')) {
+            section.style.display = 'none';
+        }
+    });
+    
+    // Show checkout section
+    document.getElementById('checkout').style.display = 'block';
+    
+    // Update order summary
+    updateOrderSummary();
+    
+    // Close cart
+    closeCart();
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Update order summary in checkout
+function updateOrderSummary() {
+    const orderSummaryItems = document.getElementById('orderSummaryItems');
+    const orderTotalPrice = document.getElementById('orderTotalPrice');
+    
+    orderSummaryItems.innerHTML = shoppingCart.map(item => `
+        <div class="order-item">
+            <div>
+                <strong>${item.name}</strong>
+                ${item.description ? `<br><small>${item.description}</small>` : ''}
+                <br><small>Qty: ${item.quantity} × Rp ${item.price.toLocaleString('id-ID')}</small>
+            </div>
+            <div><strong>Rp ${(item.price * item.quantity).toLocaleString('id-ID')}</strong></div>
+        </div>
+    `).join('');
+    
+    const total = shoppingCart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    orderTotalPrice.textContent = `Rp ${total.toLocaleString('id-ID')}`;
+}
+
+// Select panel type
+function selectPanel(panelType) {
+    // Remove selected class from all
+    document.querySelectorAll('.panel-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    
+    // Add selected class to clicked
+    event.target.closest('.panel-option').classList.add('selected');
+    
+    // Update hidden input
+    document.getElementById('selectedPanel').value = panelType;
+    selectedPanelType = panelType;
+}
+
+// Back to shopping
+function backToShopping() {
+    document.getElementById('checkout').style.display = 'none';
+    document.querySelectorAll('section:not(#checkout):not(#adminPanel)').forEach(section => {
+        section.style.display = 'block';
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Handle checkout form submission
+function handleCheckoutSubmit(event) {
+    event.preventDefault();
+    
+    // Validate panel selection
+    if (!selectedPanelType) {
+        showError('checkoutError', currentLang === 'id' ? 
+            'Silakan pilih tipe panel terlebih dahulu!' : 
+            'Please select a panel type first!');
+        return;
+    }
+    
+    // Get form data
+    const email = document.getElementById('checkoutEmail').value;
+    const username = document.getElementById('checkoutUsername').value;
+    const password = document.getElementById('checkoutPassword').value;
+    
+    // Calculate total
+    const total = shoppingCart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    // Build order details
+    const orderDetails = shoppingCart.map(item => 
+        `• ${item.name} (${item.quantity}x) - Rp ${(item.price * item.quantity).toLocaleString('id-ID')}`
+    ).join('\n');
+    
+    // Build WhatsApp message
+    const message = `Halo min 👋
+
+saya tertarik nih untuk beli panel ini:
+
+🖥 *Panel:* ${selectedPanelType}
+📧 *Email:* ${email}
+👤 *Username:* ${username}
+🔐 *Password:* ${password}
+
+📦 *Order Details:*
+${orderDetails}
+
+💰 *Total Price:* Rp ${total.toLocaleString('id-ID')}
+
+saya minta konfirmasi apa panel ini masih tersedia atau tidak 🙏`;
+    
+    // Confirm before redirect
+    if (confirm(currentLang === 'id' ? 
+        'Anda akan diarahkan ke WhatsApp. Lanjutkan?' : 
+        'You will be redirected to WhatsApp. Continue?')) {
+        
+        // Encode message for WhatsApp
+        const encodedMessage = encodeURIComponent(message);
+        const whatsappNumber = '6283862091550';
+        const whatsappURL = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+        
+        // Open WhatsApp
+        window.open(whatsappURL, '_blank');
+        
+        // Clear cart and reset form after successful order
+        setTimeout(() => {
+            shoppingCart = [];
+            updateCart();
+            document.getElementById('checkoutForm').reset();
+            selectedPanelType = '';
+            document.querySelectorAll('.panel-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            backToShopping();
+            
+            alert(currentLang === 'id' ? 
+                'Terima kasih! Pesanan Anda telah dikirim via WhatsApp.' : 
+                'Thank you! Your order has been sent via WhatsApp.');
+        }, 1000);
+    }
+}
+
+// Helper function to create Add to Cart button
+function createAddToCartButton(name, price, description = '') {
+    const button = document.createElement('button');
+    button.className = 'add-to-cart-btn';
+    button.onclick = () => addToCart(name, price, description);
+    button.innerHTML = `🛒 <span data-lang-id="Tambah ke Keranjang" data-lang-en="Add to Cart">Tambah ke Keranjang</span>`;
+    return button;
+}
+
+// Add "Add to Cart" buttons to all VPS and Minecraft cards on page load
+window.addEventListener('DOMContentLoaded', () => {
+    // Add buttons to all VPS cards
+    document.querySelectorAll('.vps-card').forEach(card => {
+        const title = card.querySelector('h3')?.textContent || '';
+        const priceText = card.querySelector('.vps-price, .discount-price')?.textContent || '';
+        
+        // Extract price from text (remove "Rp" and commas)
+        const priceMatch = priceText.match(/Rp\s*([\d.,]+)/);
+        if (priceMatch) {
+            const price = parseInt(priceMatch[1].replace(/\./g, '').replace(/,/g, ''));
+            
+            // Get specs
+            const specs = Array.from(card.querySelectorAll('.vps-specs li')).map(li => li.textContent).join(', ');
+            
+            if (!card.querySelector('.add-to-cart-btn')) {
+                const button = createAddToCartButton(title, price, specs);
+                card.appendChild(button);
+            }
+        }
+    });
 });
 

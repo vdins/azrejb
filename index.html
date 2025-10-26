@@ -21,6 +21,37 @@
         <div id="notificationContent"></div>
     </div>
 
+    <!-- Shopping Cart Overlay -->
+    <div id="cartOverlay" class="cart-overlay" onclick="closeCart()"></div>
+
+    <!-- Shopping Cart Sidebar -->
+    <div id="cartSidebar" class="cart-sidebar">
+        <div class="cart-header">
+            <h3>🛒 <span data-lang-id="Keranjang Belanja" data-lang-en="Shopping Cart">Keranjang Belanja</span></h3>
+            <button class="close-cart" onclick="closeCart()">&times;</button>
+        </div>
+        <div class="cart-body">
+            <div id="cartItems" class="cart-items">
+                <div class="cart-empty">
+                    <p>🛒</p>
+                    <p data-lang-id="Keranjang kosong" data-lang-en="Cart is empty">Keranjang kosong</p>
+                </div>
+            </div>
+            <div id="cartSummary" class="cart-summary" style="display: none;">
+                <div class="cart-total">
+                    <span data-lang-id="Total:" data-lang-en="Total:">Total:</span>
+                    <span class="total-price" id="cartTotalPrice">Rp 0</span>
+                </div>
+                <button class="checkout-btn" onclick="proceedToCheckout()">
+                    <span data-lang-id="Lanjut ke Checkout" data-lang-en="Proceed to Checkout">Lanjut ke Checkout</span>
+                </button>
+                <button class="continue-shopping" onclick="closeCart()">
+                    <span data-lang-id="Lanjut Belanja" data-lang-en="Continue Shopping">Lanjut Belanja</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Header -->
     <header>
         <nav class="container">
@@ -29,6 +60,13 @@
                 <div class="lang-toggle">
                     <button class="lang-btn active" onclick="setLanguage('id')">ID</button>
                     <button class="lang-btn" onclick="setLanguage('en')">EN</button>
+                </div>
+                <!-- Shopping Cart Icon -->
+                <div class="cart-icon-wrapper" onclick="openCart()">
+                    <button class="lang-btn">
+                        🛒 <span data-lang-id="Keranjang" data-lang-en="Cart">Keranjang</span>
+                        <span id="cartBadge" class="cart-badge" style="display: none;">0</span>
+                    </button>
                 </div>
                 <div id="authButtons" class="auth-buttons">
                     <button class="lang-btn" onclick="openLoginModal()">
@@ -775,6 +813,85 @@
                         💬 <span data-lang-id="Chat Sekarang" data-lang-en="Chat Now">Chat Sekarang</span>
                     </a>
                 </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Checkout Section -->
+    <section id="checkout" style="display: none; padding: 80px 0; background: var(--bg-light);">
+        <div class="container">
+            <h2 class="section-title">
+                📋 <span data-lang-id="Checkout" data-lang-en="Checkout">Checkout</span>
+            </h2>
+            
+            <div class="checkout-form-container">
+                <h3 data-lang-id="Informasi Panel Anda" data-lang-en="Your Panel Information">Informasi Panel Anda</h3>
+                
+                <form id="checkoutForm" onsubmit="handleCheckoutSubmit(event)">
+                    <!-- Panel Selection -->
+                    <div class="form-section">
+                        <h4>🖥 <span data-lang-id="Pilih Panel Data" data-lang-en="Select Panel Data">Pilih Panel Data</span></h4>
+                        <div class="panel-selector">
+                            <div class="panel-option" onclick="selectPanel('Panel Pterodactyl')" data-panel="Panel Pterodactyl">
+                                <h5>Panel Pterodactyl</h5>
+                                <p data-lang-id="Server Game Panel" data-lang-en="Game Server Panel">Server Game Panel</p>
+                            </div>
+                            <div class="panel-option" onclick="selectPanel('Panel Minecraft')" data-panel="Panel Minecraft">
+                                <h5>Panel Minecraft</h5>
+                                <p data-lang-id="Minecraft Hosting Panel" data-lang-en="Minecraft Hosting Panel">Minecraft Hosting Panel</p>
+                            </div>
+                            <div class="panel-option" onclick="selectPanel('Panel VPS')" data-panel="Panel VPS">
+                                <h5>Panel VPS</h5>
+                                <p data-lang-id="Virtual Private Server" data-lang-en="Virtual Private Server">Virtual Private Server</p>
+                            </div>
+                            <div class="panel-option" onclick="selectPanel('Custom Panel')" data-panel="Custom Panel">
+                                <h5>Custom Panel</h5>
+                                <p data-lang-id="Panel Khusus" data-lang-en="Custom Panel">Panel Khusus</p>
+                            </div>
+                        </div>
+                        <input type="hidden" id="selectedPanel" name="panel" required>
+                    </div>
+
+                    <!-- User Information -->
+                    <div class="form-section">
+                        <h4>👤 <span data-lang-id="Informasi Pengguna" data-lang-en="User Information">Informasi Pengguna</span></h4>
+                        
+                        <div class="form-group">
+                            <label>📧 Email <span style="color: red;">*</span></label>
+                            <input type="email" id="checkoutEmail" name="email" required placeholder="your.email@example.com">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>👤 Username <span style="color: red;">*</span></label>
+                            <input type="text" id="checkoutUsername" name="username" required placeholder="username">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>🔐 Password <span style="color: red;">*</span></label>
+                            <input type="password" id="checkoutPassword" name="password" required placeholder="••••••••" minlength="8">
+                        </div>
+                    </div>
+
+                    <!-- Order Summary -->
+                    <div class="order-summary">
+                        <h4>📦 <span data-lang-id="Ringkasan Pesanan" data-lang-en="Order Summary">Ringkasan Pesanan</span></h4>
+                        <div id="orderSummaryItems"></div>
+                        <div class="order-total">
+                            <span data-lang-id="Total Pembayaran:" data-lang-en="Total Payment:">Total Pembayaran:</span>
+                            <span id="orderTotalPrice">Rp 0</span>
+                        </div>
+                    </div>
+
+                    <div class="error-message" id="checkoutError"></div>
+                    
+                    <button type="submit" class="whatsapp-btn">
+                        💬 <span data-lang-id="Kirim Pesanan via WhatsApp" data-lang-en="Send Order via WhatsApp">Kirim Pesanan via WhatsApp</span>
+                    </button>
+                    
+                    <button type="button" class="continue-shopping" onclick="backToShopping()" style="margin-top: 1rem;">
+                        ← <span data-lang-id="Kembali Belanja" data-lang-en="Back to Shopping">Kembali Belanja</span>
+                    </button>
+                </form>
             </div>
         </div>
     </section>
